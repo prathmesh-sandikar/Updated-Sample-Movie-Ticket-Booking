@@ -8,7 +8,9 @@ conn = sqlite3.connect("Bookings.db", check_same_thread=False)
 cursor = conn.cursor()
 
 Movies_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='PICTURE'").fetchall()
-shows_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='SHOWS'").fetchall()
+shows_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='SHOW'").fetchall()
+halls_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='HALL'").fetchall()
+Book_tickets_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='BOOKED_TICKETS'").fetchall()
 
 
 if Movies_table:
@@ -29,14 +31,38 @@ if shows_table:
     print("Table Already Exists ! ")
 
 else:
-    conn.execute(''' CREATE TABLE SHOWS(
+    conn.execute(''' CREATE TABLE SHOW(
                             SHOWID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            MOVIEID INTEGER,
                             MOVIENAME TEXT,
                             HALLID INTEGER,
                             TIME INTEGER,
                             DATE INTEGER,
                             PRICEID INTEGER,
                             CityName TEXT); ''')
+    print("Table has created")
+
+
+if halls_table:
+    print("Table Already Exists ! ")
+
+else:
+    conn.execute(''' CREATE TABLE HALL(
+                            HALLID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            SHOWID Integer,
+                            Class TEXT,
+                            No_of_seats INTEGER); ''')
+    print("Table has created")
+
+
+if Book_tickets_table:
+    print("Table Already Exists ! ")
+
+else:
+    conn.execute(''' CREATE TABLE BOOKED_TICKETS(
+                            TICKET_NO INTEGER PRIMARY KEY AUTOINCREMENT,
+                            SHOWID INTEGER,
+                            SEAT_NO INTEGER); ''')
     print("Table has created")
 
 
@@ -107,6 +133,7 @@ def viewall():
 @app.route("/showsDashboard", methods=["GET", "POST"])
 def arrangeShows():
     if request.method == "POST":
+        getMOvieId = request.form["mid"]
         getMOvieName = request.form["mname"]
         getHallId = request.form["hid"]
         getTime = request.form["shtime"]
@@ -122,9 +149,9 @@ def arrangeShows():
         print(getCItyName)
 
         try:
-            data = (getMOvieName, getHallId, getTime, getDate, getPriceId, getCItyName)
-            insert_query = '''INSERT INTO SHOWS(MOVIENAME, HALLID, TIME, DATE, PRICEID, CityName) 
-                                    VALUES (?,?,?,?,?,?)'''
+            data = (getMOvieId, getMOvieName, getHallId, getTime, getDate, getPriceId, getCItyName)
+            insert_query = '''INSERT INTO SHOW(MOVIEID, MOVIENAME, HALLID, TIME, DATE, PRICEID, CityName) 
+                                    VALUES (?,?,?,?,?,?,?)'''
 
             cursor.execute(insert_query, data)
             conn.commit()
@@ -137,11 +164,88 @@ def arrangeShows():
 
 
 @app.route("/viewallshows")
-def viewallshows():
+def viewAllShows():
     cur = conn.cursor()
-    cur.execute("SELECT * FROM SHOWS")
+    cur.execute("SELECT * FROM SHOW")
     res = cur.fetchall()
     return render_template("viewallshows.html", cinemass=res)
+
+@app.route("/viewallHalls")
+def viewAllHalls():
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM HALL")
+    res = cur.fetchall()
+    return render_template("viewallhalls.html", cinemass=res)
+
+
+@app.route("/showsHalls", methods=["GET", "POST"])
+def arrangeHalls():
+    if request.method == "POST":
+        getMShowId = request.form["sid"]
+        getClass = request.form["class"]
+        getNoOfSeats= request.form["nos"]
+
+
+        print(getMShowId)
+        print(getClass)
+        print(getNoOfSeats)
+
+
+        try:
+            data = (getMShowId, getClass, getNoOfSeats)
+            insert_query = '''INSERT INTO HALL(SHOWID, Class, No_of_seats) 
+                                    VALUES (?,?,?)'''
+
+            cursor.execute(insert_query, data)
+            conn.commit()
+            print("Hall added successfully")
+            return redirect("/viewallhalls")
+
+        except Exception as e:
+            print(e)
+    return render_template("showsHalls.html")
+
+
+
+@app.route("/getAvailableSeats", methods=["GET"])
+def seatingManagement():
+    if request.method == "GET":
+        hallId = request.args.get('hallId')
+        showId = request.args.get('showId')
+        print("showId : ", showId)
+        print("hallId: ",hallId)
+    cur = conn.cursor()
+    cur.execute("SELECT No_of_seats FROM HALL NATURAL JOIN SHOW WHERE HALLID = ? AND SHOWID = ?" + hallId,  showId)
+    res = cur.fetchall()
+    print("*** res **: ", res )
+    return render_template("seating.html", res=res)
+
+        # totalGold = 0
+        # totalStandard = 0
+
+        # for i in res:
+        #     if i[0] == 'gold':
+        #         totalGold = i[1]
+        #     if i[0] == 'standard':
+        #         totalStandard = i[1]
+        #
+        # cur.execute("SELECT SEAT_NO FROM BOOKED_TICKETS WHERE SHOWID = " + getshowID)
+
+        # goldSeats = []
+        # standardSeats = []
+        #
+        # for i in range(1, totalGold + 1):
+        #     goldSeats.append([i, ''])
+        #
+        #     for i in range(1, totalStandard + 1):
+        #         standardSeats.append([i, ''])
+        #
+        #     for i in res:
+        #         if i[0] > 1000:
+        #             goldSeats[i[0] % 1000 - 1][1] = 'disabled'
+        #         else:
+        #             standardSeats[i[0] - 1][1] = 'disabled'
+
 
 
 
