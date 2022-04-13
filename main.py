@@ -8,6 +8,7 @@ conn = sqlite3.connect("Bookings.db", check_same_thread=False)
 cursor = conn.cursor()
 
 Movies_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='PICTURE'").fetchall()
+shows_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='SHOWS'").fetchall()
 
 
 if Movies_table:
@@ -22,6 +23,21 @@ else:
                              SHOWEND TEXT,
                              CITYNAME TEXT); ''')
     print("Table has created...!")
+
+
+if shows_table:
+    print("Table Already Exists ! ")
+
+else:
+    conn.execute(''' CREATE TABLE SHOWS(
+                            SHOWID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            MOVIENAME TEXT,
+                            HALLID INTEGER,
+                            TIME INTEGER,
+                            DATE INTEGER,
+                            PRICEID INTEGER,
+                            CityName TEXT); ''')
+    print("Table has created")
 
 
 
@@ -87,6 +103,47 @@ def viewall():
     cur.execute("SELECT * FROM PICTURE")
     res = cur.fetchall()
     return render_template("viewall.html", cinemas=res)
+
+@app.route("/showsDashboard", methods=["GET", "POST"])
+def arrangeShows():
+    if request.method == "POST":
+        getMOvieName = request.form["mname"]
+        getHallId = request.form["hid"]
+        getTime = request.form["shtime"]
+        getDate = request.form["shdate"]
+        getPriceId = request.form["prid"]
+        getCItyName = request.form["ciname"]
+
+        print(getMOvieName)
+        print(getHallId)
+        print(getTime)
+        print(getDate)
+        print(getPriceId)
+        print(getCItyName)
+
+        try:
+            data = (getMOvieName, getHallId, getTime, getDate, getPriceId, getCItyName)
+            insert_query = '''INSERT INTO SHOWS(MOVIENAME, HALLID, TIME, DATE, PRICEID, CityName) 
+                                    VALUES (?,?,?,?,?,?)'''
+
+            cursor.execute(insert_query, data)
+            conn.commit()
+            print("Show added successfully")
+            return redirect("/viewallshows")
+
+        except Exception as e:
+            print(e)
+    return render_template("showsDashboard.html")
+
+
+@app.route("/viewallshows")
+def viewallshows():
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM SHOWS")
+    res = cur.fetchall()
+    return render_template("viewallshows.html", cinemass=res)
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
