@@ -2,16 +2,14 @@ import flask
 from flask import Flask, render_template, redirect, request
 import sqlite3
 
-
-
 conn = sqlite3.connect("Bookings.db", check_same_thread=False)
 cursor = conn.cursor()
 
 Movies_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='PICTURE'").fetchall()
 shows_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='SHOW'").fetchall()
 halls_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='HALL'").fetchall()
-Book_tickets_table = conn.execute("SELECT name from sqlite_master WHERE type='table' AND name='BOOKED_TICKETS'").fetchall()
-
+Book_tickets_table = conn.execute(
+    "SELECT name from sqlite_master WHERE type='table' AND name='BOOKED_TICKETS'").fetchall()
 
 if Movies_table:
     print("Table Already Exists ! ")
@@ -25,7 +23,6 @@ else:
                              SHOWEND TEXT,
                              CITYNAME TEXT); ''')
     print("Table has created...!")
-
 
 if shows_table:
     print("Table Already Exists ! ")
@@ -42,18 +39,16 @@ else:
                             CityName TEXT); ''')
     print("Table has created")
 
-
 if halls_table:
     print("Table Already Exists ! ")
 
 else:
-    conn.execute(''' CREATE TABLE HALL(
-                            HALLID INTEGER PRIMARY KEY AUTOINCREMENT,
-                            SHOWID Integer,
+    conn.execute(''' CREATE TABLE HALL1(
+                            HALLID INTEGER PRIMARY KEY,
+                            SHOWID FOREIGN KEY REFERENCES SHOW(SHOWID),
                             Class TEXT,
                             No_of_seats INTEGER); ''')
     print("Table has created")
-
 
 if Book_tickets_table:
     print("Table Already Exists ! ")
@@ -65,9 +60,8 @@ else:
                             SEAT_NO INTEGER); ''')
     print("Table has created")
 
-
-
 app = Flask(__name__)
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -88,7 +82,6 @@ def login():
         print(e)
 
     return render_template("/owner_login.html")
-
 
 
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -122,13 +115,13 @@ def dashboard():
     return render_template("dashboard.html")
 
 
-
 @app.route("/viewall")
 def viewall():
     cur = conn.cursor()
     cur.execute("SELECT * FROM PICTURE")
     res = cur.fetchall()
     return render_template("viewall.html", cinemas=res)
+
 
 @app.route("/showsDashboard", methods=["GET", "POST"])
 def arrangeShows():
@@ -170,26 +163,17 @@ def viewAllShows():
     res = cur.fetchall()
     return render_template("viewallshows.html", cinemass=res)
 
-@app.route("/viewallHalls")
-def viewAllHalls():
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM HALL")
-    res = cur.fetchall()
-    return render_template("viewallhalls.html", cinemass=res)
-
 
 @app.route("/showsHalls", methods=["GET", "POST"])
 def arrangeHalls():
     if request.method == "POST":
         getMShowId = request.form["sid"]
         getClass = request.form["class"]
-        getNoOfSeats= request.form["nos"]
-
+        getNoOfSeats = request.form["nos"]
 
         print(getMShowId)
         print(getClass)
         print(getNoOfSeats)
-
 
         try:
             data = (getMShowId, getClass, getNoOfSeats)
@@ -206,6 +190,13 @@ def arrangeHalls():
     return render_template("showsHalls.html")
 
 
+@app.route("/viewallHalls")
+def viewAllHalls():
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM HALL")
+    res = cur.fetchall()
+    return render_template("viewallhalls.html", cinema=res)
+
 
 @app.route("/getAvailableSeats", methods=["GET"])
 def seatingManagement():
@@ -213,22 +204,29 @@ def seatingManagement():
         hallId = request.args.get('hallId')
         showId = request.args.get('showId')
         print("showId : ", showId)
-        print("hallId: ",hallId)
-    cur = conn.cursor()
-    cur.execute("SELECT No_of_seats FROM HALL NATURAL JOIN SHOW WHERE HALLID = ? AND SHOWID = ?" + hallId,  showId)
-    res = cur.fetchall()
-    print("*** res **: ", res )
-    return render_template("seating.html", res=res)
+        print("hallId: ", hallId)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM HALL WHERE HALLID = ? AND SHOWID = ?", (hallId, showId))
+        res = cur.fetchall()
+        print(res)
+        print("*****")
+        # data = (hall_class,showId)
+        # q =  "SELECT * FROM HALL"
+        # cur.execute(q,data)
+        # res = cur.fetchall()
+        # print("*** res **: ", res )
 
-        # totalGold = 0
-        # totalStandard = 0
 
-        # for i in res:
-        #     if i[0] == 'gold':
-        #         totalGold = i[1]
-        #     if i[0] == 'standard':
-        #         totalStandard = i[1]
-        #
+        totalGold = 0
+        totalStandard = 0
+
+        for i in res:
+            print("***** ele ****: ", i[2])
+            if i[2] == 'gold':
+                totalGold = i[3]
+            if i[2] == 'standard':
+                totalStandard = i[3]
+
         # cur.execute("SELECT SEAT_NO FROM BOOKED_TICKETS WHERE SHOWID = " + getshowID)
 
         # goldSeats = []
@@ -245,10 +243,7 @@ def seatingManagement():
         #             goldSeats[i[0] % 1000 - 1][1] = 'disabled'
         #         else:
         #             standardSeats[i[0] - 1][1] = 'disabled'
-
-
-
+        return render_template("seating.html", goldSeats=totalGold, standardSeats=totalStandard)
 
 if __name__ == "__main__":
     app.run(debug=True)
-
